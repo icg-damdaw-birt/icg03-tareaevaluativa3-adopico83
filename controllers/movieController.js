@@ -103,3 +103,66 @@ exports.deleteMovie = async (req, res) => {
     res.status(500).json({ error: 'No se pudo eliminar la película' });
   }
 };
+
+// PATCH /api/movies/:id/favorite - Cambia el estado de favorito de una película
+exports.toggleFavorite = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const userId = req.user.userId;
+
+    // Verificar propiedad: buscar la película que pertenezca al usuario
+    const movie = await prisma.movie.findFirst({
+      where: { 
+        id: id,
+        ownerId: userId 
+      },
+    });
+
+    if (!movie) {
+      return res.status(404).json({ error: 'Película no encontrada' });
+    }
+
+    // Actualizar el estado isFavorite invirtiendo su valor actual
+    const updatedMovie = await prisma.movie.update({
+      where: { id: id },
+      data: { isFavorite: !movie.isFavorite },
+    });
+
+    res.status(200).json(updatedMovie);
+  } catch (error) {
+    res.status(500).json({ error: 'Error del servidor al actualizar favoritos' });
+  }
+};
+
+// PATCH /api/movies/:id/rating - Actualiza la puntuación de una película
+exports.updateRating = async (req, res) => {
+  const { id } = req.params;
+  const { rating } = req.body;
+
+  // Validar que rating sea un número entero entre 0 y 5
+  if (rating === undefined || !Number.isInteger(rating) || rating < 0 || rating > 5) {
+    return res.status(400).json({ error: 'El rating debe ser un número entero entre 0 y 5' });
+  }
+
+  try {
+    // Verificar que la película existe y pertenece al usuario
+    const movie = await prisma.movie.findFirst({
+      where: { id, ownerId: req.user.userId },
+    });
+
+    if (!movie) {
+      return res.status(404).json({ error: 'Película no encontrada' });
+    }
+
+    // Actualizar el rating
+    const updatedMovie = await prisma.movie.update({
+      where: { id },
+      data: { rating },
+    });
+
+    res.json(updatedMovie);
+  } catch (error) {
+    res.status(500).json({ error: 'Error del servidor al actualizar el rating' });
+  }
+};
+
